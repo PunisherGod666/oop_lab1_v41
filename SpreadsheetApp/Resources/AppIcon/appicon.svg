@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="456" height="456" viewBox="0 0 456 456" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#0B132B" />
+            <stop offset="0.65" stop-color="#1C2541" />
+            <stop offset="1" stop-color="#3A506B" />
+        </linearGradient>
+        <radialGradient id="moon" cx="0.42" cy="0.4" r="0.65">
+            <stop offset="0" stop-color="#FFF8E4" />
+            <stop offset="0.7" stop-color="#F4E9C8" />
+            <stop offset="1" stop-color="#E6D3A3" />
+        </radialGradient>
+        <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0.55" stop-color="#F4E9C8" stop-opacity="0.35" />
+            <stop offset="1" stop-color="#F4E9C8" stop-opacity="0" />
+        </radialGradient>
+        <clipPath id="tile">
+            <rect x="0" y="0" width="456" height="456" rx="100" />
+        </clipPath>
+    </defs>
+
+    <g clip-path="url(#tile)">
+        <!-- sky -->
+        <rect x="0" y="0" width="456" height="456" fill="url(#sky)" />
+
+        <!-- stars -->
+        <circle cx="58" cy="70" r="3" fill="#F4E9C8" opacity="0.9" />
+        <circle cx="112" cy="40" r="2" fill="#F4E9C8" opacity="0.7" />
+        <circle cx="400" cy="58" r="2.5" fill="#F4E9C8" opacity="0.8" />
+        <circle cx="414" cy="150" r="2" fill="#F4E9C8" opacity="0.6" />
+        <circle cx="42" cy="168" r="2" fill="#F4E9C8" opacity="0.6" />
+        <circle cx="86" cy="120" r="1.5" fill="#F4E9C8" opacity="0.5" />
+
+        <!-- moon -->
+        <circle cx="246" cy="178" r="172" fill="url(#glow)" />
+        <circle cx="246" cy="178" r="122" fill="url(#moon)" />
+        <circle cx="300" cy="126" r="14" fill="#E8D9B0" opacity="0.6" />
+        <circle cx="318" cy="208" r="26" fill="#E8D9B0" opacity="0.5" />
+        <circle cx="270" cy="250" r="12" fill="#E8D9B0" opacity="0.55" />
+
+        <!-- distant forest -->
+        <path d="M0 360 L22 318 L44 360 L60 330 L80 362 L100 326 L124 364 L456 364 L456 456 L0 456 Z" fill="#16203A" />
+        <path d="M330 370 L352 324 L374 370 L392 338 L414 372 L436 330 L456 360 L456 456 L330 456 Z" fill="#16203A" />
+
+        <!-- rock -->
+        <path d="M30 456 C80 430 130 420 190 418 C270 414 350 420 410 444 L424 456 Z" fill="#0B132B" />
+
+        <!-- howling wolf -->
+        <g transform="translate(16 0)">
+            <path fill="#0B132B" stroke="#F4E9C8" stroke-opacity="0.22" stroke-width="3" stroke-linejoin="round" d="
+                M110 148
+                C122 150 140 152 156 152
+                C164 152 170 150 174 148
+                C180 140 186 134 196 128
+                L208 80
+                L224 120
+                L238 88
+                L248 132
+                C258 144 264 156 266 170
+                L276 196
+                L292 210
+                L284 214
+                L304 234
+                L294 238
+                L316 260
+                C334 290 350 330 354 372
+                C356 392 362 430 362 470
+                L136 470
+                C146 430 152 390 156 372
+                L166 352
+                L154 346
+                L170 334
+                L158 326
+                L176 314
+                C182 296 182 272 178 256
+                C176 248 174 242 172 238
+                L126 194
+                L162 198
+                L122 164
+                Z" />
+            <!-- amber eye -->
+            <path d="M178 144 L196 136 L192 148 Z" fill="#F4B942" />
+        </g>
+    </g>
+</svg>

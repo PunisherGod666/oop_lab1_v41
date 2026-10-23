@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:ui="clr-namespace:SpreadsheetApp.UI"
+             x:Class="SpreadsheetApp.UI.MainPage"
+             x:DataType="ui:SpreadsheetViewModel"
+             Title="Електронні таблиці"
+             BackgroundColor="{StaticResource Night}"
+             NavigationPage.HasNavigationBar="False">
+
+    <ContentPage.Resources>
+        <!-- Sidebar group caption -->
+        <Style x:Key="GroupCaption" TargetType="Label">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="CharacterSpacing" Value="1.2" />
+            <Setter Property="TextColor" Value="{StaticResource Silver}" />
+            <Setter Property="Padding" Value="10,0,0,4" />
+        </Style>
+
+        <!-- Sidebar menu button (left alignment is set in MauiProgram) -->
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="ClassId" Value="nav" />
+            <Setter Property="HeightRequest" Value="36" />
+            <Setter Property="MinimumHeightRequest" Value="36" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="ContentLayout" Value="Left,12" />
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="TextColor" Value="{StaticResource Moon}" />
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal" />
+                        <VisualState x:Name="PointerOver">
+                            <VisualState.Setters>
+                                <Setter Property="BackgroundColor" Value="{StaticResource Night}" />
+                            </VisualState.Setters>
+                        </VisualState>
+                        <VisualState x:Name="Disabled">
+                            <VisualState.Setters>
+                                <Setter Property="TextColor" Value="{StaticResource FurLight}" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+
+        <!-- Primary action (Save) -->
+        <Style x:Key="PrimaryNavButton" TargetType="Button" BasedOn="{StaticResource NavButton}">
+            <Setter Property="BackgroundColor" Value="{StaticResource Amber}" />
+            <Setter Property="TextColor" Value="{StaticResource NightDeep}" />
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal" />
+                        <VisualState x:Name="PointerOver">
+                            <VisualState.Setters>
+                                <Setter Property="BackgroundColor" Value="#FFC95C" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+
+        <!-- Row/column tile: icon above label -->
+        <Style x:Key="TileButton" TargetType="Button">
+            <Setter Property="HeightRequest" Value="52" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="ContentLayout" Value="Top,6" />
+            <Setter Property="BackgroundColor" Value="#16203A" />
+            <Setter Property="BorderColor" Value="{StaticResource NightLight}" />
+            <Setter Property="BorderWidth" Value="1" />
+            <Setter Property="TextColor" Value="{StaticResource Moon}" />
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal" />
+                        <VisualState x:Name="PointerOver">
+                            <VisualState.Setters>
+                                <Setter Property="BackgroundColor" Value="{StaticResource NightLight}" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+
+        <!-- Half of the Values/Expressions segmented switch -->
+        <Style x:Key="SegmentButton" TargetType="Button">
+            <Setter Property="HeightRequest" Value="36" />
+            <Setter Property="MinimumHeightRequest" Value="36" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="TextColor" Value="{StaticResource Moon}" />
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid ColumnDefinitions="236,1,*">
+
+        <!-- Sidebar -->
+        <ScrollView Grid.Column="0" BackgroundColor="{StaticResource NightDeep}">
+            <!-- Compact sizes so it fits small screens; scrolls otherwise -->
+            <Grid RowDefinitions="Auto,Auto,Auto,2,Auto,Auto,Auto" RowSpacing="10" Padding="16,12">
+
+                <!-- Logo and title -->
+                <HorizontalStackLayout Grid.Row="0" Spacing="12">
+                    <Border WidthRequest="46" HeightRequest="46" StrokeThickness="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="14" />
+                        </Border.StrokeShape>
+                        <Image Source="wolf_avatar.png" Aspect="AspectFill"
+                               SemanticProperties.Description="Емблема: вовк виє на місяць" />
+                    </Border>
+                    <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+                        <Label Text="Електронні таблиці" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Moon}" />
+                        <Label Text="Вовча зграя" FontSize="12" TextColor="{StaticResource Silver}" />
+                    </VerticalStackLayout>
+                </HorizontalStackLayout>
+
+                <!-- File commands -->
+                <VerticalStackLayout Grid.Row="1" Spacing="2">
+                    <Label Text="ФАЙЛ" Style="{StaticResource GroupCaption}" />
+                    <Button Text="Новий" ImageSource="icon_new.png" Command="{Binding NewCommand}"
+                            Style="{StaticResource NavButton}" ToolTipProperties.Text="Створити нову порожню таблицю" />
+                    <Button Text="Відкрити…" ImageSource="icon_open.png" Command="{Binding OpenCommand}"
+                            Style="{StaticResource NavButton}" ToolTipProperties.Text="Відкрити таблицю з вибраного сховища" />
+                    <Button Text="Зберегти" ImageSource="icon_save.png" Command="{Binding SaveCommand}"
+                            Style="{StaticResource PrimaryNavButton}" ToolTipProperties.Text="Зберегти таблицю у вибране сховище" />
+                    <Button Text="Зберегти як…" ImageSource="icon_saveas.png" Command="{Binding SaveAsCommand}"
+                            Style="{StaticResource NavButton}" ToolTipProperties.Text="Зберегти таблицю під новим ім'ям" />
+                </VerticalStackLayout>
+
+                <!-- Table commands -->
+                <VerticalStackLayout Grid.Row="2" Spacing="6">
+                    <Label Text="ТАБЛИЦЯ" Style="{StaticResource GroupCaption}" />
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                        <Button Grid.Row="0" Grid.Column="0" Text="+ Рядок" ImageSource="icon_row_add.png"
+                                Command="{Binding AddRowCommand}" Style="{StaticResource TileButton}"
+                                ToolTipProperties.Text="Додати рядок у кінець таблиці" />
+                        <Button Grid.Row="0" Grid.Column="1" Text="− Рядок" ImageSource="icon_row_remove.png"
+                                Command="{Binding RemoveRowCommand}" Style="{StaticResource TileButton}"
+                                ToolTipProperties.Text="Видалити останній рядок" />
+                        <Button Grid.Row="1" Grid.Column="0" Text="+ Стовпець" ImageSource="icon_col_add.png"
+                                Command="{Binding AddColumnCommand}" Style="{StaticResource TileButton}"
+                                ToolTipProperties.Text="Додати стовпець у кінець таблиці" />
+                        <Button Grid.Row="1" Grid.Column="1" Text="− Стовпець" ImageSource="icon_col_remove.png"
+                                Command="{Binding RemoveColumnCommand}" Style="{StaticResource TileButton}"
+                                ToolTipProperties.Text="Видалити останній стовпець" />
+                    </Grid>
+                </VerticalStackLayout>
+
+                <!-- Row 3 is a spacer -->
+
+                <!-- Display mode -->
+                <VerticalStackLayout Grid.Row="4" Spacing="6">
+                    <Label Text="ПОКАЗУВАТИ" Style="{StaticResource GroupCaption}" />
+                    <Border BackgroundColor="#16203A" Stroke="{StaticResource NightLight}" StrokeThickness="1" Padding="4">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="12" />
+                        </Border.StrokeShape>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                            <Button Grid.Column="0" Text="Значення" Command="{Binding ShowValuesCommand}"
+                                    Style="{StaticResource SegmentButton}"
+                                    ToolTipProperties.Text="Показувати в клітинках обчислені значення">
+                                <Button.Triggers>
+                                    <DataTrigger TargetType="Button" Binding="{Binding IsValueMode}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{StaticResource Amber}" />
+                                        <Setter Property="TextColor" Value="{StaticResource NightDeep}" />
+                                    </DataTrigger>
+                                </Button.Triggers>
+                            </Button>
+                            <Button Grid.Column="1" Text="Вирази" Command="{Binding ShowExpressionsCommand}"
+                                    Style="{StaticResource SegmentButton}"
+                                    ToolTipProperties.Text="Показувати в клітинках вирази">
+                                <Button.Triggers>
+                                    <DataTrigger TargetType="Button" Binding="{Binding IsExpressionMode}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{StaticResource Amber}" />
+                                        <Setter Property="TextColor" Value="{StaticResource NightDeep}" />
+                                    </DataTrigger>
+                                </Button.Triggers>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- Google Drive -->
+                <Grid Grid.Row="5" ColumnDefinitions="18,100,86" ColumnSpacing="8" Padding="10,0,0,0"
+                      ToolTipProperties.Text="Зберігати й відкривати файли з Google Drive">
+                    <Image Grid.Column="0" Source="icon_cloud.png" WidthRequest="18" HeightRequest="18" VerticalOptions="Center" />
+                    <Label Grid.Column="1" Text="Google Drive" FontSize="13" TextColor="{StaticResource Moon}" VerticalOptions="Center" />
+                    <Switch Grid.Column="2" IsToggled="{Binding UseGoogleDrive}" OnColor="{StaticResource AmberDeep}"
+                            ThumbColor="{StaticResource Moon}" VerticalOptions="Center" HorizontalOptions="End" />
+                </Grid>
+
+                <!-- Help -->
+                <Button Grid.Row="6" Text="Довідка" ImageSource="icon_help.png" Clicked="OnHelpClicked"
+                        HeightRequest="40" CornerRadius="12" FontSize="14" FontAttributes="Bold"
+                        ContentLayout="Left,8" BackgroundColor="Transparent"
+                        BorderColor="{StaticResource Amber}" BorderWidth="1.5" TextColor="{StaticResource Amber}"
+                        ToolTipProperties.Text="Про програму та синтаксис виразів" />
+            </Grid>
+        </ScrollView>
+
+        <!-- Divider -->
+        <BoxView Grid.Column="1" Color="{StaticResource NightLight}" />
+
+        <!-- Document area -->
+        <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="14" Padding="20,18,20,14">
+
+            <!-- Document title -->
+            <HorizontalStackLayout Grid.Row="0" Spacing="12">
+                <Label Text="{Binding DocumentName}" FontSize="22" FontAttributes="Bold"
+                       TextColor="{StaticResource Moon}" VerticalOptions="End" />
+                <Label Text="{Binding DocumentInfo}" FontSize="13" TextColor="{StaticResource Silver}"
+                       VerticalOptions="End" Margin="0,0,0,3" />
+                <Border IsVisible="{Binding IsModified}" BackgroundColor="#33F4B942" StrokeThickness="0"
+                        Padding="10,2" VerticalOptions="End" Margin="0,0,0,2">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Label Text="не збережено" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource Amber}" />
+                </Border>
+            </HorizontalStackLayout>
+
+            <!-- Formula bar -->
+            <Border Grid.Row="1" BackgroundColor="#16203A" Stroke="{StaticResource NightLight}" StrokeThickness="1" Padding="8">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12" />
+                </Border.StrokeShape>
+                <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="10">
+                    <Border Grid.Column="0" BackgroundColor="{StaticResource Night}" Stroke="{StaticResource Amber}"
+                            StrokeThickness="1.5" Padding="14,0" MinimumWidthRequest="56" HeightRequest="40"
+                            VerticalOptions="Center">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Label Text="{Binding SelectedCellName}" FontAttributes="Bold" FontSize="15"
+                               TextColor="{StaticResource Amber}" HorizontalOptions="Center" VerticalOptions="Center"
+                               SemanticProperties.Description="Вибрана клітинка" />
+                    </Border>
+                    <Label Grid.Column="1" Text="ƒx" FontAttributes="Italic" FontSize="17" FontFamily="Consolas"
+                           TextColor="{StaticResource Amber}" VerticalOptions="Center" />
+                    <Border Grid.Column="2" BackgroundColor="White" Stroke="{StaticResource FurLight}" StrokeThickness="1.5"
+                            Padding="10,0" HeightRequest="40">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding IsFocused, Source={x:Reference FormulaEntry}, x:DataType=Entry}" Value="True">
+                                <Setter Property="Stroke" Value="{StaticResource Amber}" />
+                                <Setter Property="StrokeThickness" Value="2.5" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <Entry x:Name="FormulaEntry" ClassId="formula"
+                               Text="{Binding SelectedExpression}"
+                               ReturnCommand="{Binding CommitFormulaCommand}"
+                               BackgroundColor="White"
+                               FontFamily="Consolas" FontSize="15"
+                               MinimumHeightRequest="36" VerticalOptions="Center"
+                               TextColor="{StaticResource NightDeep}"
+                               PlaceholderColor="{StaticResource FurLight}"
+                               Placeholder="Виберіть клітинку й введіть вираз, напр. (A1 + B2) * 3"
+                               ClearButtonVisibility="WhileEditing"
+                               SemanticProperties.Description="Вираз вибраної клітинки" />
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Cell grid (filled in code-behind) -->
+            <Border Grid.Row="2" StrokeThickness="1" Stroke="{StaticResource NightLight}" Padding="0"
+                    BackgroundColor="{StaticResource NightDeep}">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12" />
+                </Border.StrokeShape>
+                <ScrollView Orientation="Both">
+                    <Grid x:Name="SheetGrid" ColumnSpacing="1" RowSpacing="1" Padding="1"
+                          HorizontalOptions="Start" VerticalOptions="Start"
+                          BackgroundColor="{StaticResource NightDeep}" />
+                </ScrollView>
+            </Border>
+
+            <!-- Status line: error of the selected cell -->
+            <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" MinimumHeightRequest="20">
+                <Ellipse Grid.Column="0" Fill="#FF8A80" WidthRequest="8" HeightRequest="8" VerticalOptions="Center"
+                         IsVisible="{Binding HasErrorMessage}" />
+                <Label Grid.Column="1" Text="{Binding ErrorMessage}" TextColor="#FF8A80" FontAttributes="Bold" FontSize="13"
+                       LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                <ActivityIndicator Grid.Column="2" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                                   Color="{StaticResource Amber}" HeightRequest="18" WidthRequest="18" />
+            </Grid>
+        </Grid>
+    </Grid>
+</ContentPage>

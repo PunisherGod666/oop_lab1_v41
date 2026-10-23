@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="SpreadsheetApp.UI.HelpPage"
+             Title="🐺 Довідка">
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="0.6,1">
+            <GradientStop Color="{StaticResource NightDeep}" Offset="0" />
+            <GradientStop Color="{StaticResource Night}" Offset="1" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <ContentPage.Resources>
+        <Style x:Key="Heading" TargetType="Label">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="Margin" Value="0,16,0,4" />
+            <Setter Property="TextColor" Value="{StaticResource Amber}" />
+        </Style>
+        <Style x:Key="Body" TargetType="Label">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="LineHeight" Value="1.2" />
+            <Setter Property="TextColor" Value="{StaticResource Moon}" />
+        </Style>
+        <Style x:Key="Code" TargetType="Label" BasedOn="{StaticResource Body}">
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="TextColor" Value="{StaticResource Frost}" />
+        </Style>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24,12" Spacing="4" MaximumWidthRequest="900" HorizontalOptions="Start">
+
+            <HorizontalStackLayout Spacing="16">
+                <Border WidthRequest="96" HeightRequest="96" StrokeThickness="3" Stroke="{StaticResource Amber}"
+                        StrokeShape="Ellipse" BackgroundColor="{StaticResource Night}">
+                    <Image Source="wolf_avatar.png" Aspect="AspectFill" />
+                </Border>
+                <VerticalStackLayout VerticalOptions="Center">
+                    <Label Text="Електронні таблиці" FontSize="26" FontAttributes="Bold" TextColor="{StaticResource Moon}" />
+                    <Label Text="🐺 Вовча зграя · лабораторна робота №1 та №1*" FontSize="14" TextColor="{StaticResource Silver}" />
+                </VerticalStackLayout>
+            </HorizontalStackLayout>
+
+            <Label Style="{StaticResource Body}" Margin="0,12,0,0"
+                   Text="Програма для створення, редагування, обчислення та збереження електронних таблиць. Клітинки містять вирази з цілими числами довільної довжини, посиланнями на інші клітинки, арифметичними, логічними операціями та функціями. Синтаксичний аналіз виконує парсер, згенерований ANTLR 4 з граматики CellFormula.g4. Платформа: .NET MAUI." />
+
+            <Label Style="{StaticResource Heading}" Text="Як працювати" />
+            <Label Style="{StaticResource Body}">
+                <Label.Text>• Клацніть клітинку й введіть вираз. Enter — зберегти й перейти на клітинку нижче.
+• Рядок «ƒx» над таблицею показує вираз вибраної клітинки; його теж можна редагувати (Enter — застосувати).
+• Перемикач «Режим» показує в клітинках або вирази (ВИРАЗ), або обчислені значення (ЗНАЧЕННЯ). Під час редагування клітинка завжди показує вираз.
+• «+ Рядок», «− Рядок», «+ Стовпець», «− Стовпець» додають або видаляють останній рядок/стовпець.
+• Якщо вираз містить помилку, у клітинці з'являється її код (червоним), а внизу вікна — опис і позиція помилки. Наведіть курсор на клітинку, щоб побачити підказку.
+• Вираз можна починати зі знака «=» (як в Excel) — він ігнорується.</Label.Text>
+            </Label>
+
+            <Label Style="{StaticResource Heading}" Text="Елементи виразів" />
+            <Label Style="{StaticResource Body}">
+                <Label.Text>• Цілі числа довільної довжини: 0, 42, 123456789012345678901234567890.
+• Посилання на клітинки: A1, B12, AA3 (регістр літер не важливий). Порожня клітинка дорівнює 0.
+• Круглі дужки ( ) для зміни порядку обчислень.
+• Пропуски між елементами виразу допускаються будь-де.</Label.Text>
+            </Label>
+
+            <Label Style="{StaticResource Heading}" Text="Операції та функції (від найвищого пріоритету)" />
+            <Label Style="{StaticResource Code}">
+                <Label.Text>(вираз)  числа  посилання  функції
+x ^ y                   піднесення до степеня (правоасоціативне: 2^3^2 = 2^(3^2))
++x  -x                  унарні плюс і мінус (-2^2 = -4)
+x * y   x / y           множення, цілочисельне ділення
+x div y   x mod y       цілочисельне ділення, остача від ділення
+x + y   x - y           додавання, віднімання
+=  &lt;&gt;  &lt;  &lt;=  &gt;  &gt;=    порівняння (результат — логічне значення)
+not x                   логічне заперечення
+x and y                 логічне «і»
+x or y                  логічне «або»
+x eqv y                 еквівалентність (TRUE, якщо обидва операнди однакові)
+
+inc(x)  dec(x)                   x + 1,  x - 1
+max(x, y)  min(x, y)             більше / менше з двох чисел
+mmax(x1, ..., xN)  mmin(...)     найбільше / найменше з N ≥ 1 чисел</Label.Text>
+            </Label>
+            <Label Style="{StaticResource Body}"
+                   Text="Арифметичні операції та функції працюють із числами; not, and, or, eqv — з логічними значеннями (результатами порівнянь). Порівняння = та &lt;&gt; можна застосовувати й до двох логічних значень. Логічні значення відображаються як TRUE (істина) та FALSE (хибність)." />
+
+            <Label Style="{StaticResource Heading}" Text="Приклади" />
+            <Label Style="{StaticResource Code}">
+                <Label.Text>(A1 + B2) * 3 - C1 mod 7
+2 ^ 100
+mmax(A1, A2, A3, 10) - mmin(A1, A2)
+inc(A1) div 2
+(A1 &gt; 0) and not (B1 = 5)
+(A1 &lt;= 10) eqv (B1 &gt;= 10)</Label.Text>
+            </Label>
+
+            <Label Style="{StaticResource Heading}" Text="Коди помилок" />
+            <Label Style="{StaticResource Code}">
+                <Label.Text>#SYNTAX!    синтаксична помилка (позицію показано внизу вікна)
+#VALUE!     невідповідність типів (наприклад, число and число)
+#DIV/0!     ділення на нуль
+#CYCLE!     циклічне посилання (клітинка прямо чи опосередковано посилається на себе)
+#REF!       посилання на клітинку поза таблицею або на клітинку з помилкою
+#NUM!       недопустимий аргумент (від'ємний або завеликий показник степеня)</Label.Text>
+            </Label>
+
+            <Label Style="{StaticResource Heading}" Text="Збереження та Google Drive" />
+            <Label Style="{StaticResource Body}">
+                <Label.Text>Таблиці зберігаються у форматі JSON (розміри таблиці та вирази клітинок; значення перераховуються під час відкриття).
+• Локальний диск — «Зберегти як…» і «Відкрити…» відкривають вікно Провідника, де ви самі вибираєте теку та ім'я файлу. «Зберегти» перезаписує поточний файл.
+• Google Drive — увімкніть перемикач «Google Drive». Файли зберігаються в теці «SpreadsheetApp» на вашому Google Drive; при збереженні програма питає ім'я файлу, при відкритті показує список.
+Перед закриттям вікна, створенням нової таблиці чи відкриттям іншої програма запропонує зберегти незбережені зміни.</Label.Text>
+            </Label>
+
+            <Label Style="{StaticResource Heading}" Text="Як підключити Google Drive (один раз)" />
+            <Label Style="{StaticResource Body}">
+                <Label.Text>1. Відкрийте console.cloud.google.com і створіть проєкт (або виберіть наявний).
+2. «APIs &amp; Services» → «Library» → знайдіть «Google Drive API» → «Enable».
+3. «APIs &amp; Services» → «OAuth consent screen» (Google Auth Platform): тип «External», вкажіть назву застосунку й свою пошту. У розділі «Audience» → «Test users» додайте свою Gmail-адресу.
+4. «Credentials» (Clients) → «Create credentials» → «OAuth client ID» → тип застосунку «Desktop app» → «Create».
+5. Натисніть «Download JSON» і збережіть файл.
+6. У програмі увімкніть перемикач «Google Drive» → «Вибрати файл» → виберіть завантажений JSON. Програма запам'ятає його.
+7. Відкриється браузер: увійдіть у Google-акаунт і дозвольте доступ. Якщо Google попереджає, що застосунок не перевірено, натисніть «Продовжити» — це ваш власний тестовий застосунок.
+Програма має доступ лише до файлів, які створила сама (дозвіл drive.file), а не до всього вашого диска.</Label.Text>
+            </Label>
+
+            <Button Text="Повернутися до таблиці" Clicked="OnBackClicked" HorizontalOptions="Start" Margin="0,18,0,12" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
