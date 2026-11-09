@@ -84,7 +84,7 @@ internal sealed class Recalculator
             throw new CalcException(ErrorKind.InvalidReference, $"Клітинка {address} поза межами таблиці");
 
         if (!_cells.TryGetValue(address, out var cell))
-            return Value.FromNumber(0); // empty cell counts as zero
+            throw new CalcException(ErrorKind.EmptyReference, $"Клітинка {address} порожня (null)");
 
         if (_pending.Contains(address) || _inProgress.Contains(address))
             EvaluateCell(cell);

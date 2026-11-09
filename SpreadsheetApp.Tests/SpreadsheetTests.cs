@@ -36,11 +36,20 @@ public class SpreadsheetTests
     }
 
     [Fact]
-    public void EmptyCellIsZero()
+    public void ReferenceToEmptyCellIsNull()
     {
         var sheet = new Spreadsheet();
         sheet.SetExpression(A("A1"), "B1 + 1");
-        Assert.Equal("1", sheet.GetCell(A("A1")).Value.ToString());
+
+        var error = sheet.GetCell(A("A1")).Error;
+        Assert.Equal(ErrorKind.EmptyReference, error?.Kind);
+        Assert.Equal("#NULL!", error?.Code);
+
+        sheet.SetExpression(A("B1"), "4");
+        Assert.Equal("5", sheet.GetCell(A("A1")).Value.ToString());
+
+        sheet.SetExpression(A("B1"), "");
+        Assert.Equal(ErrorKind.EmptyReference, sheet.GetCell(A("A1")).Error?.Kind);
     }
 
     [Fact]
@@ -84,6 +93,7 @@ public class SpreadsheetTests
     public void ReferencesOutsideTheTableAreInvalid()
     {
         var sheet = new Spreadsheet(3, 3);
+        sheet.SetExpression(A("C3"), "7");
         sheet.SetExpression(A("A1"), "C3 + 1");
         Assert.True(sheet.GetCell(A("A1")).Error is null);
 
@@ -91,7 +101,10 @@ public class SpreadsheetTests
         Assert.Equal(ErrorKind.InvalidReference, sheet.GetCell(A("A1")).Error?.Kind);
 
         sheet.AddRow();
-        Assert.Equal("1", sheet.GetCell(A("A1")).Value.ToString());
+        Assert.Equal(ErrorKind.EmptyReference, sheet.GetCell(A("A1")).Error?.Kind);
+
+        sheet.SetExpression(A("C3"), "9");
+        Assert.Equal("10", sheet.GetCell(A("A1")).Value.ToString());
     }
 
     [Fact]

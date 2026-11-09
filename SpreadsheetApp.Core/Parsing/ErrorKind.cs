@@ -8,5 +8,6 @@ public enum ErrorKind
     DivisionByZero,
     CyclicReference,
     InvalidReference,
-    InvalidArgument
+    InvalidArgument,
+    EmptyReference
 }

@@ -22,6 +22,7 @@ public class CalcException : Exception
         ErrorKind.CyclicReference => "#CYCLE!",
         ErrorKind.InvalidReference => "#REF!",
         ErrorKind.InvalidArgument => "#NUM!",
+        ErrorKind.EmptyReference => "#NULL!",
         _ => "#ERROR!"
     };
 

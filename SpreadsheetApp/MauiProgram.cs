@@ -70,7 +70,7 @@ public static class MauiProgram
 			}
 		});
 
-		// Ask to save unsaved changes when the window is closed
+		// Confirm exit (and offer to save unsaved changes) when the window is closed
 		builder.ConfigureLifecycleEvents(events =>
 		{
 			events.AddWindows(windows => windows.OnWindowCreated(window =>
@@ -79,11 +79,11 @@ public static class MauiProgram
 				window.AppWindow.Closing += async (_, args) =>
 				{
 					var viewModel = IPlatformApplication.Current?.Services.GetService<SpreadsheetViewModel>();
-					if (closeConfirmed || viewModel is null || !viewModel.IsModified)
+					if (closeConfirmed || viewModel is null)
 						return;
 
 					args.Cancel = true;
-					if (await viewModel.ConfirmDiscardChangesAsync())
+					if (await viewModel.ConfirmExitAsync())
 					{
 						closeConfirmed = true;
 						window.Close();

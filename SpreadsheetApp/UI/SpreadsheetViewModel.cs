@@ -340,6 +340,14 @@ public sealed class SpreadsheetViewModel : INotifyPropertyChanged
             LoadSheet(document.Sheet, document.FileName, _storage);
     }
 
+    // Asks "really exit?" and then offers to save unsaved changes; false means stay in the app
+    public async Task<bool> ConfirmExitAsync()
+    {
+        if (!await _dialogs.ConfirmAsync("Вихід", "Ви точно хочете вийти з програми?", "Вийти", "Залишитись"))
+            return false;
+        return await ConfirmDiscardChangesAsync();
+    }
+
     // Offers to save unsaved changes; false means the user cancelled
     public async Task<bool> ConfirmDiscardChangesAsync()
     {
