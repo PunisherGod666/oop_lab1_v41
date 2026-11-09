@@ -33,11 +33,15 @@ public static class MauiProgram
 		string tokenDirectory = Path.Combine(FileSystem.AppDataDirectory, "GoogleDriveToken");
 
 		// Dependency injection
-		builder.Services.AddSingleton(new LocalFileStorage(dataDirectory));
-		builder.Services.AddSingleton(new GoogleDriveStorage(clientSecrets, tokenDirectory));
-		builder.Services.AddSingleton<SpreadsheetSerializer>();
+		// Storages appear in the sidebar in this order; to add one, register another IFileStorage
+		builder.Services.AddSingleton<IFileStorage>(new LocalFileStorage(dataDirectory));
+		builder.Services.AddSingleton<IFileStorage>(new GoogleDriveStorage(clientSecrets, tokenDirectory));
+
+		builder.Services.AddSingleton<ISpreadsheetSerializer, SpreadsheetSerializer>();
 		builder.Services.AddSingleton<IDialogService, MauiDialogService>();
 		builder.Services.AddSingleton<IFilePickerService, WindowsFilePickerService>();
+		builder.Services.AddSingleton<ICredentialsProvider, CredentialsProvider>();
+		builder.Services.AddSingleton<IDocumentFileService, DocumentFileService>();
 		builder.Services.AddSingleton<SpreadsheetViewModel>();
 		builder.Services.AddSingleton<MainPage>();
 

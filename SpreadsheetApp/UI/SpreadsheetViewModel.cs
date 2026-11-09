@@ -6,24 +6,20 @@ using SpreadsheetApp.Storage;
 
 namespace SpreadsheetApp.UI;
 
-/// <summary>Main page view model: table editing, files and storage switching.</summary>
+/// <summary>Main page view model: table editing, display mode, current document and storage.</summary>
 public sealed class SpreadsheetViewModel : INotifyPropertyChanged
 {
     private const string AppTitle = "Електронні таблиці";
-    private const string DefaultFileName = "Таблиця";
-    private const string FileTypeDescription = "Електронна таблиця (JSON)";
 
-    private Spreadsheet _sheet;
-    private IFileStorage _storage;
-    private readonly SpreadsheetSerializer _serializer;
-    private readonly LocalFileStorage _localStorage;
-    private readonly GoogleDriveStorage _driveStorage;
+    private readonly IDocumentFileService _files;
+    private readonly ICredentialsProvider _credentials;
     private readonly IDialogService _dialogs;
-    private readonly IFilePickerService _filePicker;
 
+    private Spreadsheet _sheet = new();
+    private IFileStorage _storage;
+    private IFileStorage? _currentFileStorage;
     private DisplayMode _mode = DisplayMode.Value;
     private string _currentFileName = string.Empty;
-    private IFileStorage? _currentFileStorage;
     private string _errorMessage = string.Empty;
     private bool _isModified;
     private bool _isBusy;
@@ -31,22 +27,21 @@ public sealed class SpreadsheetViewModel : INotifyPropertyChanged
     private string _selectedExpression = string.Empty;
 
     public SpreadsheetViewModel(
-        LocalFileStorage localStorage,
-        GoogleDriveStorage driveStorage,
-        SpreadsheetSerializer serializer,
-        IDialogService dialogs,
-        IFilePickerService filePicker)
+        IEnumerable<IFileStorage> storages,
+        IDocumentFileService files,
+        ICredentialsProvider credentials,
+        IDialogService dialogs)
     {
-        _sheet = new Spreadsheet();
-        _localStorage = localStorage;
-        _driveStorage = driveStorage;
-        _storage = localStorage;
-        _serializer = serializer;
+        Storages = storages.ToList();
+        if (Storages.Count == 0)
+            throw new ArgumentException("At least one storage is required.", nameof(storages));
+        _storage = Storages[0];
+        _files = files;
+        _credentials = credentials;
         _dialogs = dialogs;
-        _filePicker = filePicker;
 
         NewCommand = new Command(async () => await RunAsync(NewAsync), () => !IsBusy);
-        OpenCommand = new Command(async () => await RunAsync(OpenWithDialogAsync), () => !IsBusy);
+        OpenCommand = new Command(async () => await RunAsync(OpenAsync), () => !IsBusy);
         SaveCommand = new Command(async () => await RunAsync(SaveAsync), () => !IsBusy);
         SaveAsCommand = new Command(async () => await RunAsync(SaveAsAsync), () => !IsBusy);
         AddRowCommand = new Command(AddRow);
@@ -100,7 +95,10 @@ public sealed class SpreadsheetViewModel : INotifyPropertyChanged
     public string DocumentName =>
         CurrentFileName.Length > 0 ? Path.GetFileNameWithoutExtension(CurrentFileName) : "Нова таблиця";
 
-    public string DocumentInfo => $"{StorageName} · {RowCount} × {ColumnCount}";
+    public string DocumentInfo => $"{_storage.DisplayName} · {RowCount} × {ColumnCount}";
+
+    public string Title =>
+        $"{(CurrentFileName.Length > 0 ? Path.GetFileName(CurrentFileName) : "Нова таблиця")}{(IsModified ? " *" : "")} — {AppTitle}";
 
     public string ErrorMessage
     {
@@ -137,25 +135,25 @@ public sealed class SpreadsheetViewModel : INotifyPropertyChanged
         }
     }
 
-    public string Title =>
-        $"{(CurrentFileName.Length > 0 ? Path.GetFileName(CurrentFileName) : "Нова таблиця")}{(IsModified ? " *" : "")} — {AppTitle}";
+    // All registered storages; a new one only needs a DI registration
+    public IReadOnlyList<IFileStorage> Storages { get; }
 
-    // Storage switch: local disk or Google Drive
-    public bool UseGoogleDrive
+    // Storages that need sign-in are connected first; on cancel or error the previous one stays selected
+    public IFileStorage SelectedStorage
     {
-        get => _storage == _driveStorage;
+        get => _storage;
         set
         {
-            if (value == UseGoogleDrive)
+            if (value is null || value == _storage)
                 return;
-            if (value)
-                _ = RunAsync(ConnectGoogleDriveAsync);
+            if (IsBusy)
+                RevertStorageSelection();
+            else if (value is IConnectableStorage { IsConnected: false } connectable)
+                _ = RunAsync(() => ConnectAsync(connectable));
             else
-                SwitchStorage(_localStorage);
+                SwitchStorage(value);
         }
     }
-
-    public string StorageName => _storage.DisplayName;
 
     public int RowCount => _sheet.RowCount;
     public int ColumnCount => _sheet.ColumnCount;
@@ -305,7 +303,7 @@ public sealed class SpreadsheetViewModel : INotifyPropertyChanged
         RaiseStructureChanged();
     }
 
-    // ---------- Files ----------
+    // ---------- Document ----------
 
     private async Task NewAsync()
     {
@@ -321,80 +319,25 @@ public sealed class SpreadsheetViewModel : INotifyPropertyChanged
             await SaveAsAsync();
             return;
         }
-        await WriteFileAsync(CurrentFileName);
+        await _files.SaveAsync(_sheet, _storage, CurrentFileName);
+        MarkSaved(CurrentFileName);
     }
 
     private async Task SaveAsAsync()
     {
-        string suggested = CurrentFileName.Length > 0
-            ? Path.GetFileNameWithoutExtension(CurrentFileName)
-            : DefaultFileName;
-
-        // Local disk: Explorer save dialog; Google Drive: name prompt
-        if (_storage == _localStorage)
-        {
-            string? path = await _filePicker.PickSaveFileAsync(
-                suggested, FileTypeDescription, SpreadsheetSerializer.FileExtension);
-            if (path is not null)
-                await WriteFileAsync(path);
-            return;
-        }
-
-        string? input = await _dialogs.PromptAsync("Зберегти таблицю",
-            $"Ім'я файлу (сховище: {StorageName}):", suggested);
-        if (string.IsNullOrWhiteSpace(input))
-            return;
-
-        string fileName = NormalizeFileName(input);
-        var existing = await _storage.ListFilesAsync();
-        if (existing.Contains(fileName, StringComparer.OrdinalIgnoreCase) &&
-            !fileName.Equals(CurrentFileName, StringComparison.OrdinalIgnoreCase) &&
-            !await _dialogs.ConfirmAsync("Файл уже існує", $"Файл «{fileName}» уже існує. Замінити його?"))
-            return;
-
-        await WriteFileAsync(fileName);
+        string? fileName = await _files.SaveAsAsync(_sheet, _storage, CurrentFileName);
+        if (fileName is not null)
+            MarkSaved(fileName);
     }
 
-    private async Task WriteFileAsync(string fileName)
-    {
-        await _storage.SaveAsync(fileName, _serializer.Serialize(_sheet));
-        CurrentFileName = fileName;
-        _currentFileStorage = _storage;
-        IsModified = false;
-        ErrorMessage = string.Empty;
-    }
-
-    private async Task OpenWithDialogAsync()
+    private async Task OpenAsync()
     {
         if (!await ConfirmDiscardChangesAsync())
             return;
 
-        // Local disk: Explorer open dialog; Google Drive: list of files
-        if (_storage == _localStorage)
-        {
-            string? path = await _filePicker.PickOpenFileAsync(SpreadsheetSerializer.FileExtension);
-            if (path is not null)
-                await OpenAsync(path);
-            return;
-        }
-
-        var files = await _storage.ListFilesAsync();
-        if (files.Count == 0)
-        {
-            await _dialogs.AlertAsync("Відкрити таблицю", $"У сховищі «{StorageName}» ще немає збережених таблиць.");
-            return;
-        }
-
-        string? fileName = await _dialogs.ChooseAsync($"Відкрити таблицю ({StorageName})", files);
-        if (fileName is not null)
-            await OpenAsync(fileName);
-    }
-
-    public async Task OpenAsync(string fileName)
-    {
-        byte[] data = await _storage.LoadAsync(fileName);
-        Spreadsheet sheet = _serializer.Deserialize(data);
-        LoadSheet(sheet, fileName, _storage);
+        var document = await _files.OpenAsync(_storage);
+        if (document is not null)
+            LoadSheet(document.Sheet, document.FileName, _storage);
     }
 
     // Offers to save unsaved changes; false means the user cancelled
@@ -423,6 +366,14 @@ public sealed class SpreadsheetViewModel : INotifyPropertyChanged
         return !IsModified;
     }
 
+    private void MarkSaved(string fileName)
+    {
+        CurrentFileName = fileName;
+        _currentFileStorage = _storage;
+        IsModified = false;
+        ErrorMessage = string.Empty;
+    }
+
     private void LoadSheet(Spreadsheet sheet, string fileName, IFileStorage? storage)
     {
         _sheet = sheet;
@@ -436,65 +387,31 @@ public sealed class SpreadsheetViewModel : INotifyPropertyChanged
         RaiseStructureChanged();
     }
 
-    private static string NormalizeFileName(string input)
-    {
-        string name = input.Trim();
-        foreach (char c in Path.GetInvalidFileNameChars())
-            name = name.Replace(c, '_');
-        if (!name.EndsWith(SpreadsheetSerializer.FileExtension, StringComparison.OrdinalIgnoreCase))
-            name += SpreadsheetSerializer.FileExtension;
-        return name;
-    }
-
     // ---------- Storage ----------
 
-    // On failure or cancel the switch flips back to local disk
-    private async Task ConnectGoogleDriveAsync()
+    private async Task ConnectAsync(IConnectableStorage storage)
     {
         try
         {
-            if (!_driveStorage.HasClientSecrets && !await ImportClientSecretsAsync())
-            {
-                OnPropertyChanged(nameof(UseGoogleDrive));
-                return;
-            }
-
-            await _driveStorage.AuthorizeAsync();
-            SwitchStorage(_driveStorage);
+            if (await storage.ConnectAsync(_credentials))
+                SwitchStorage(storage);
         }
-        catch
+        finally
         {
-            OnPropertyChanged(nameof(UseGoogleDrive));
-            throw;
+            OnPropertyChanged(nameof(SelectedStorage)); // reverts the picker if not switched
         }
-    }
-
-    // Asks the user to pick the Google OAuth client JSON file
-    private async Task<bool> ImportClientSecretsAsync()
-    {
-        bool choose = await _dialogs.ConfirmAsync("Підключення Google Drive",
-            "Для входу в Google Drive програмі потрібен файл OAuth-клієнта Google (тип «Desktop app»), " +
-            "який завантажується з Google Cloud Console. Як його створити, описано в «Довідці».\n\n" +
-            "Вибрати цей JSON-файл зараз?",
-            "Вибрати файл", "Скасувати");
-        if (!choose)
-            return false;
-
-        string? path = await _filePicker.PickOpenFileAsync(".json");
-        if (path is null)
-            return false;
-
-        await _driveStorage.ImportClientSecretsAsync(path);
-        return true;
     }
 
     private void SwitchStorage(IFileStorage storage)
     {
         _storage = storage;
-        OnPropertyChanged(nameof(UseGoogleDrive));
-        OnPropertyChanged(nameof(StorageName));
+        OnPropertyChanged(nameof(SelectedStorage));
         OnPropertyChanged(nameof(DocumentInfo));
     }
+
+    // The picker ignores a change raised inside its own setter, so revert on the next tick
+    private void RevertStorageSelection() =>
+        Dispatcher.GetForCurrentThread()?.Dispatch(() => OnPropertyChanged(nameof(SelectedStorage)));
 
     // ---------- Helpers ----------
 
@@ -520,13 +437,9 @@ public sealed class SpreadsheetViewModel : INotifyPropertyChanged
 
     private async Task ShowErrorAsync(Exception ex)
     {
-        string message = ex switch
-        {
-            OperationCanceledException => "Операцію скасовано або перевищено час очікування.",
-            Google.GoogleApiException api => $"Помилка Google Drive: {api.Error?.Message ?? api.Message}",
-            System.Net.Http.HttpRequestException => "Немає з'єднання з інтернетом або сервер недоступний.",
-            _ => ex.Message
-        };
+        string message = ex is OperationCanceledException
+            ? "Операцію скасовано або перевищено час очікування."
+            : ex.Message;
         ErrorMessage = message;
         await _dialogs.AlertAsync("Помилка", message);
     }

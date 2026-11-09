@@ -9,17 +9,12 @@ namespace SpreadsheetApp.Parsing;
 /// <summary>Converts the ANTLR parse tree into an Expr tree and validates functions and cell addresses.</summary>
 internal sealed class AstBuilder : CellFormulaBaseVisitor<Expr>
 {
-    // Supported functions with their argument count limits
-    private static readonly Dictionary<string, (FunctionKind Kind, int MinArgs, int MaxArgs)> Functions =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["inc"] = (FunctionKind.Inc, 1, 1),
-            ["dec"] = (FunctionKind.Dec, 1, 1),
-            ["max"] = (FunctionKind.Max, 2, 2),
-            ["min"] = (FunctionKind.Min, 2, 2),
-            ["mmax"] = (FunctionKind.MMax, 1, int.MaxValue),
-            ["mmin"] = (FunctionKind.MMin, 1, int.MaxValue),
-        };
+    private readonly FunctionRegistry _functions;
+
+    public AstBuilder(FunctionRegistry functions)
+    {
+        _functions = functions;
+    }
 
     public override Expr VisitFormula(CellFormulaParser.FormulaContext context) =>
         Visit(context.eqvExpr());
@@ -99,7 +94,7 @@ internal sealed class AstBuilder : CellFormulaBaseVisitor<Expr>
     public override Expr VisitFunctionAtom(CellFormulaParser.FunctionAtomContext context)
     {
         IToken name = context.IDENT().Symbol;
-        if (!Functions.TryGetValue(name.Text, out var function))
+        if (!_functions.TryGet(name.Text, out var function))
             throw new CalcException(ErrorKind.Syntax, $"Невідома функція «{name.Text}»", name.StartIndex);
 
         var arguments = context.eqvExpr().Select(Visit).ToList();
@@ -113,7 +108,7 @@ internal sealed class AstBuilder : CellFormulaBaseVisitor<Expr>
                 name.StartIndex);
         }
 
-        return new FunctionCall(function.Kind, arguments, name.StartIndex);
+        return new FunctionCall(function, arguments, name.StartIndex);
     }
 
     public override Expr VisitParenAtom(CellFormulaParser.ParenAtomContext context) =>

@@ -112,22 +112,11 @@ public sealed class Evaluator : IExprVisitor<Value>
 
     public Value VisitFunctionCall(FunctionCall node)
     {
-        string name = node.Function.ToString().ToLowerInvariant();
         var args = new List<BigInteger>(node.Arguments.Count);
         foreach (Expr argument in node.Arguments)
-            args.Add(RequireNumber(argument.Accept(this), argument, name));
+            args.Add(RequireNumber(argument.Accept(this), argument, node.Function.Name));
 
-        BigInteger result = node.Function switch
-        {
-            FunctionKind.Inc => args[0] + 1,
-            FunctionKind.Dec => args[0] - 1,
-            FunctionKind.Max => BigInteger.Max(args[0], args[1]),
-            FunctionKind.Min => BigInteger.Min(args[0], args[1]),
-            FunctionKind.MMax => args.Aggregate(BigInteger.Max),
-            FunctionKind.MMin => args.Aggregate(BigInteger.Min),
-            _ => throw new InvalidOperationException($"Невідома функція {node.Function}")
-        };
-        return Value.FromNumber(result);
+        return Value.FromNumber(node.Function.Apply(args));
     }
 
     private static BigInteger Power(BigInteger value, BigInteger exponent, Expr node)

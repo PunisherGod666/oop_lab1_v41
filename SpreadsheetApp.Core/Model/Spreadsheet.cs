@@ -2,7 +2,7 @@ using SpreadsheetApp.Parsing;
 
 namespace SpreadsheetApp.Model;
 
-/// <summary>Spreadsheet model: stores non-empty cells and recalculates dependents on every change.</summary>
+/// <summary>Spreadsheet model: table size, non-empty cells and their dependencies.</summary>
 public sealed class Spreadsheet
 {
     public const int DefaultRows = 10;
@@ -10,19 +10,17 @@ public sealed class Spreadsheet
 
     private readonly Dictionary<CellAddress, Cell> _cells = new();
     private readonly DependencyGraph _graph = new();
-    private readonly Evaluator _evaluator;
+    private readonly IFormulaParser _parser;
+    private readonly Recalculator _recalculator;
 
-    // Recalculation state: cells waiting to be evaluated and the chain currently being evaluated
-    private readonly HashSet<CellAddress> _pending = new();
-    private readonly List<CellAddress> _inProgress = new();
-
-    public Spreadsheet(int rows = DefaultRows, int columns = DefaultColumns)
+    public Spreadsheet(int rows = DefaultRows, int columns = DefaultColumns, IFormulaParser? parser = null)
     {
         if (rows < 1) throw new ArgumentOutOfRangeException(nameof(rows));
         if (columns < 1) throw new ArgumentOutOfRangeException(nameof(columns));
         RowCount = rows;
         ColumnCount = columns;
-        _evaluator = new Evaluator(ResolveCell);
+        _parser = parser ?? new FormulaParser();
+        _recalculator = new Recalculator(_cells, _graph, Contains);
     }
 
     public int RowCount { get; private set; }
@@ -47,7 +45,7 @@ public sealed class Spreadsheet
         {
             _cells.Remove(address);
             _graph.Update(address, new HashSet<CellAddress>());
-            RecalculateFrom(address);
+            _recalculator.RecalculateFrom(address);
             return;
         }
 
@@ -57,7 +55,7 @@ public sealed class Spreadsheet
         cell.Expression = expression;
         try
         {
-            var ast = FormulaParser.Parse(expression);
+            var ast = _parser.Parse(expression);
             cell.Ast = ast;
             cell.Dependencies = new DependencyCollector().Collect(ast);
             cell.Error = null;
@@ -71,7 +69,7 @@ public sealed class Spreadsheet
         }
 
         _graph.Update(address, cell.Dependencies);
-        RecalculateFrom(address);
+        _recalculator.RecalculateFrom(address);
     }
 
     public bool HasCycle(CellAddress address) => _graph.HasCycle(address);
@@ -80,7 +78,7 @@ public sealed class Spreadsheet
     public void AddRow()
     {
         RowCount++;
-        RecalculateAll();
+        _recalculator.RecalculateAll();
     }
 
     public void RemoveRow()
@@ -89,13 +87,13 @@ public sealed class Spreadsheet
             throw new InvalidOperationException("Таблиця повинна містити хоча б один рядок");
         RowCount--;
         RemoveCellsOutsideBounds();
-        RecalculateAll();
+        _recalculator.RecalculateAll();
     }
 
     public void AddColumn()
     {
         ColumnCount++;
-        RecalculateAll();
+        _recalculator.RecalculateAll();
     }
 
     public void RemoveColumn()
@@ -104,7 +102,7 @@ public sealed class Spreadsheet
             throw new InvalidOperationException("Таблиця повинна містити хоча б один стовпець");
         ColumnCount--;
         RemoveCellsOutsideBounds();
-        RecalculateAll();
+        _recalculator.RecalculateAll();
     }
 
     // True if the row/column has data or is referenced by other cells
@@ -117,37 +115,6 @@ public sealed class Spreadsheet
     private bool IsInUse(CellAddress address) =>
         _cells.ContainsKey(address) || _graph.GetDependents(address).Count > 0;
 
-    public void RecalculateAll()
-    {
-        _pending.Clear();
-        _pending.UnionWith(_cells.Keys);
-        foreach (var address in _cells.Keys.ToList())
-        {
-            if (_pending.Contains(address))
-                EvaluateCell(_cells[address]);
-        }
-        _pending.Clear();
-    }
-
-    // Recalculates the cell and everything that depends on it
-    public void RecalculateFrom(CellAddress start)
-    {
-        var order = _graph.GetRecalculationOrder(start);
-        _pending.Clear();
-        foreach (var address in order)
-        {
-            if (_cells.ContainsKey(address))
-                _pending.Add(address);
-        }
-
-        foreach (var address in order)
-        {
-            if (_pending.Contains(address))
-                EvaluateCell(_cells[address]);
-        }
-        _pending.Clear();
-    }
-
     private void RemoveCellsOutsideBounds()
     {
         foreach (var address in _cells.Keys.Where(a => !Contains(a)).ToList())
@@ -155,61 +122,5 @@ public sealed class Spreadsheet
             _cells.Remove(address);
             _graph.Update(address, new HashSet<CellAddress>());
         }
-    }
-
-    // Evaluates a cell; pending referenced cells are evaluated recursively, re-entry means a cycle
-    private void EvaluateCell(Cell cell)
-    {
-        int cycleStart = _inProgress.IndexOf(cell.Address);
-        if (cycleStart >= 0)
-        {
-            var path = _inProgress.Skip(cycleStart).Append(cell.Address);
-            throw new CalcException(ErrorKind.CyclicReference,
-                "Циклічне посилання: " + string.Join(" → ", path));
-        }
-
-        _pending.Remove(cell.Address);
-        if (cell.Ast is null)
-            return; // syntax error is already stored
-
-        _inProgress.Add(cell.Address);
-        try
-        {
-            cell.Value = _evaluator.Evaluate(cell.Ast);
-            cell.Error = null;
-        }
-        catch (CalcException ex)
-        {
-            cell.Value = null;
-            cell.Error = ex;
-        }
-        finally
-        {
-            _inProgress.RemoveAt(_inProgress.Count - 1);
-        }
-    }
-
-    // Value lookup used by the evaluator for cell references
-    private Value ResolveCell(CellAddress address)
-    {
-        if (!Contains(address))
-            throw new CalcException(ErrorKind.InvalidReference, $"Клітинка {address} поза межами таблиці");
-
-        if (!_cells.TryGetValue(address, out var cell))
-            return Value.FromNumber(0); // empty cell counts as zero
-
-        if (_pending.Contains(address) || _inProgress.Contains(address))
-            EvaluateCell(cell);
-
-        if (cell.Error is { } error)
-        {
-            // Errors propagate; cycle members share the same cycle message
-            string message = error.Kind == ErrorKind.CyclicReference
-                ? error.Message
-                : $"Клітинка {address} містить помилку ({error.Code})";
-            throw new CalcException(error.Kind, message);
-        }
-
-        return cell.Value ?? Value.FromNumber(0);
     }
 }

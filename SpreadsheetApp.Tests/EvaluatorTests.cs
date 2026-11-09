@@ -8,7 +8,7 @@ public class EvaluatorTests
 {
     private static Value Eval(string text, Func<CellAddress, Value>? cells = null)
     {
-        var ast = FormulaParser.Parse(text);
+        var ast = new FormulaParser().Parse(text);
         return new Evaluator(cells ?? (_ => Value.FromNumber(0))).Evaluate(ast);
     }
 

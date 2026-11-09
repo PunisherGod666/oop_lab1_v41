@@ -3,10 +3,23 @@ using SpreadsheetApp.Parsing.Grammar;
 
 namespace SpreadsheetApp.Parsing;
 
-/// <summary>Parses cell text with the ANTLR-generated lexer/parser and builds an Expr tree.</summary>
-public static class FormulaParser
+/// <summary>Turns cell text into an expression tree.</summary>
+public interface IFormulaParser
 {
-    public static Expr Parse(string text)
+    Expr Parse(string text);
+}
+
+/// <summary>Parses cell text with the ANTLR-generated lexer/parser and builds an Expr tree.</summary>
+public sealed class FormulaParser : IFormulaParser
+{
+    private readonly FunctionRegistry _functions;
+
+    public FormulaParser(FunctionRegistry? functions = null)
+    {
+        _functions = functions ?? FunctionRegistry.CreateDefault();
+    }
+
+    public Expr Parse(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
             throw new CalcException(ErrorKind.Syntax, "Порожній вираз", 0);
@@ -19,7 +32,7 @@ public static class FormulaParser
         parser.AddErrorListener(FormulaErrorListener.Instance);
 
         CellFormulaParser.FormulaContext tree = parser.formula();
-        return new AstBuilder().Visit(tree);
+        return new AstBuilder(_functions).Visit(tree);
     }
 }
 

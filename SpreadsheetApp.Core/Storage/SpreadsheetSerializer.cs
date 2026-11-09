@@ -3,11 +3,13 @@ using SpreadsheetApp.Model;
 
 namespace SpreadsheetApp.Storage;
 
-/// <summary>Converts a spreadsheet to JSON and back; only size and expressions are stored.</summary>
-public sealed class SpreadsheetSerializer
+/// <summary>JSON file format; only table size and expressions are stored.</summary>
+public sealed class SpreadsheetSerializer : ISpreadsheetSerializer
 {
-    public const string FileExtension = ".json";
     private const int FormatVersion = 1;
+
+    public string FileExtension => ".json";
+    public string FileTypeDescription => "Електронна таблиця (JSON)";
 
     private static readonly JsonSerializerOptions Options = new()
     {

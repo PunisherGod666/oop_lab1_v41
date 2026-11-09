@@ -48,13 +48,22 @@ SpreadsheetApp.sln
 ├── run.cmd, publish.cmd        запуск і збірка без Visual Studio
 ├── SpreadsheetApp.Core/        бібліотека: логіка без UI
 │   ├── Grammar/CellFormula.g4  граматика ANTLR
-│   ├── Parsing/                FormulaParser, AstBuilder, Expr (AST), Evaluator, DependencyCollector, CalcException
-│   ├── Model/                  Spreadsheet, Cell, CellAddress, Value, DependencyGraph
-│   └── Storage/                IFileStorage, LocalFileStorage, GoogleDriveStorage, SpreadsheetSerializer
+│   ├── Parsing/                IFormulaParser/FormulaParser, AstBuilder, Expr (AST), Evaluator,
+│   │                           DependencyCollector, FunctionRegistry, CalcException
+│   ├── Model/                  Spreadsheet, Recalculator, DependencyGraph, Cell, CellAddress, Value
+│   └── Storage/                IFileStorage, IConnectableStorage, LocalFileStorage, GoogleDriveStorage,
+│                               ISpreadsheetSerializer, SpreadsheetSerializer
 ├── SpreadsheetApp/             застосунок .NET MAUI (MVVM)
-│   └── UI/                     MainPage, HelpPage, SpreadsheetViewModel, DisplayMode, діалоги
+│   └── UI/                     MainPage, HelpPage, SpreadsheetViewModel, DocumentFileService,
+│                               CredentialsProvider, діалоги
 └── SpreadsheetApp.Tests/       юніт-тести xUnit
 ```
+
+### Як розширювати
+
+- **Нове сховище** — клас, що реалізує `IFileStorage` (або `IConnectableStorage`, якщо потрібен вхід в акаунт), і один рядок у `MauiProgram`: `builder.Services.AddSingleton<IFileStorage>(new MyStorage());`. Воно саме з'явиться у списку «Сховище».
+- **Новий формат файлу** — клас, що реалізує `ISpreadsheetSerializer`, зареєстрований замість `SpreadsheetSerializer`.
+- **Нова функція** — `registry.Register(new FunctionDefinition("abs", 1, 1, a => BigInteger.Abs(a[0])))`; граматику, парсер і обчислювач міняти не треба.
 
 ## Запуск
 
@@ -89,6 +98,6 @@ dotnet publish SpreadsheetApp -c Release -r win-x64 --self-contained -o publish
 1. У [Google Cloud Console](https://console.cloud.google.com) створити проєкт і увімкнути **Google Drive API**.
 2. Налаштувати OAuth consent screen (тип External) і додати свою пошту в **Test users**.
 3. Створити OAuth client ID типу **Desktop app** і завантажити JSON.
-4. У програмі увімкнути перемикач «Google Drive» → «Вибрати файл» → вибрати завантажений JSON.
+4. У програмі в списку «Сховище» вибрати «Google Drive» → «Вибрати файл» → вибрати завантажений JSON.
 
 Файл `client_secret.json` зберігається локально і **не потрапляє в репозиторій** (див. `.gitignore`).

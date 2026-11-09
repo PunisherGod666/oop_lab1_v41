@@ -4,13 +4,17 @@ namespace SpreadsheetApp.Storage;
 public sealed class LocalFileStorage : IFileStorage
 {
     private readonly string _directory;
+    private readonly string _extension;
 
-    public LocalFileStorage(string directory)
+    public LocalFileStorage(string directory, string extension = ".json")
     {
         _directory = directory;
+        _extension = extension;
     }
 
     public string DisplayName => "Локальний диск";
+
+    public bool UsesSystemFileDialog => true;
 
     public async Task SaveAsync(string fileName, byte[] data)
     {
@@ -30,7 +34,7 @@ public sealed class LocalFileStorage : IFileStorage
     public Task<IReadOnlyList<string>> ListFilesAsync()
     {
         IReadOnlyList<string> files = Directory.Exists(_directory)
-            ? Directory.EnumerateFiles(_directory, "*" + SpreadsheetSerializer.FileExtension)
+            ? Directory.EnumerateFiles(_directory, "*" + _extension)
                 .Select(Path.GetFileName)
                 .OfType<string>()
                 .Order(StringComparer.CurrentCultureIgnoreCase)

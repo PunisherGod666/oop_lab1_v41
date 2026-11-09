@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:ui="clr-namespace:SpreadsheetApp.UI"
+             xmlns:storage="clr-namespace:SpreadsheetApp.Storage;assembly=SpreadsheetApp.Core"
              x:Class="SpreadsheetApp.UI.MainPage"
              x:DataType="ui:SpreadsheetViewModel"
              Title="Електронні таблиці"
@@ -194,14 +195,17 @@
                     </Border>
                 </VerticalStackLayout>
 
-                <!-- Google Drive -->
-                <Grid Grid.Row="5" ColumnDefinitions="18,100,86" ColumnSpacing="8" Padding="10,0,0,0"
-                      ToolTipProperties.Text="Зберігати й відкривати файли з Google Drive">
-                    <Image Grid.Column="0" Source="icon_cloud.png" WidthRequest="18" HeightRequest="18" VerticalOptions="Center" />
-                    <Label Grid.Column="1" Text="Google Drive" FontSize="13" TextColor="{StaticResource Moon}" VerticalOptions="Center" />
-                    <Switch Grid.Column="2" IsToggled="{Binding UseGoogleDrive}" OnColor="{StaticResource AmberDeep}"
-                            ThumbColor="{StaticResource Moon}" VerticalOptions="Center" HorizontalOptions="End" />
-                </Grid>
+                <!-- Storage: every registered IFileStorage -->
+                <VerticalStackLayout Grid.Row="5" Spacing="6">
+                    <Label Text="СХОВИЩЕ" Style="{StaticResource GroupCaption}" />
+                    <Picker ItemsSource="{Binding Storages}"
+                            ItemDisplayBinding="{Binding DisplayName, x:DataType=storage:IFileStorage}"
+                            SelectedItem="{Binding SelectedStorage}"
+                            TextColor="{StaticResource Moon}" BackgroundColor="#16203A"
+                            TitleColor="{StaticResource Silver}" FontSize="14" HeightRequest="40"
+                            ToolTipProperties.Text="Де зберігати й відкривати таблиці"
+                            SemanticProperties.Description="Сховище" />
+                </VerticalStackLayout>
 
                 <!-- Help -->
                 <Button Grid.Row="6" Text="Довідка" ImageSource="icon_help.png" Clicked="OnHelpClicked"

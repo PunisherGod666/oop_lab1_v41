@@ -73,13 +73,13 @@ public sealed class BinaryExpr : Expr
 
 public sealed class FunctionCall : Expr
 {
-    public FunctionCall(FunctionKind function, IReadOnlyList<Expr> arguments, int position) : base(position)
+    public FunctionCall(FunctionDefinition function, IReadOnlyList<Expr> arguments, int position) : base(position)
     {
         Function = function;
         Arguments = arguments;
     }
 
-    public FunctionKind Function { get; }
+    public FunctionDefinition Function { get; }
     public IReadOnlyList<Expr> Arguments { get; }
 
     public override T Accept<T>(IExprVisitor<T> visitor) => visitor.VisitFunctionCall(this);

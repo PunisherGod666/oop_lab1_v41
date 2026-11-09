@@ -1,3 +1,4 @@
+using Google;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Drive.v3;
 using Google.Apis.Services;
@@ -8,7 +9,7 @@ using DriveFile = Google.Apis.Drive.v3.Data.File;
 namespace SpreadsheetApp.Storage;
 
 /// <summary>Stores spreadsheet files in a folder on the user's Google Drive (drive.file scope).</summary>
-public sealed class GoogleDriveStorage : IFileStorage
+public sealed class GoogleDriveStorage : IConnectableStorage
 {
     public const string ClientSecretsFileName = "client_secret.json";
     public const string FolderName = "SpreadsheetApp";
@@ -29,7 +30,26 @@ public sealed class GoogleDriveStorage : IFileStorage
 
     public string DisplayName => "Google Drive";
 
+    public bool UsesSystemFileDialog => false;
+
+    public bool IsConnected => _driveService is not null;
+
     public bool HasClientSecrets => File.Exists(_clientSecretsPath);
+
+    // Asks for the OAuth client file if it is missing, then signs in
+    public async Task<bool> ConnectAsync(ICredentialsProvider credentials)
+    {
+        if (!HasClientSecrets)
+        {
+            string? path = await credentials.RequestCredentialsFileAsync(DisplayName);
+            if (path is null)
+                return false;
+            await ImportClientSecretsAsync(path);
+        }
+
+        await GuardAsync(AuthorizeAsync);
+        return true;
+    }
 
     // Validates a "Desktop app" OAuth client file and copies it to the app's location
     public async Task ImportClientSecretsAsync(string sourcePath)
@@ -57,8 +77,67 @@ public sealed class GoogleDriveStorage : IFileStorage
         await File.WriteAllBytesAsync(_clientSecretsPath, data);
     }
 
+    public Task SaveAsync(string fileName, byte[] data) => GuardAsync(async () =>
+    {
+        DriveService service = await GetServiceAsync();
+        string folderId = await GetFolderIdAsync(service);
+        string? existingId = await FindFileIdAsync(service, folderId, fileName);
+
+        // Create a new file or overwrite the one with the same name
+        using var stream = new MemoryStream(data);
+        IUploadProgress progress;
+        if (existingId is null)
+        {
+            var metadata = new DriveFile { Name = fileName, Parents = new[] { folderId }, MimeType = FileMimeType };
+            progress = await service.Files.Create(metadata, stream, FileMimeType).UploadAsync();
+        }
+        else
+        {
+            progress = await service.Files.Update(new DriveFile(), existingId, stream, FileMimeType).UploadAsync();
+        }
+
+        if (progress.Status != UploadStatus.Completed)
+            throw new IOException("Не вдалося завантажити файл на Google Drive.", progress.Exception);
+    });
+
+    public Task<byte[]> LoadAsync(string fileName) => GuardAsync(async () =>
+    {
+        DriveService service = await GetServiceAsync();
+        string folderId = await GetFolderIdAsync(service);
+        string fileId = await FindFileIdAsync(service, folderId, fileName)
+            ?? throw new FileNotFoundException($"Файл «{fileName}» не знайдено на Google Drive.");
+
+        using var stream = new MemoryStream();
+        var progress = await service.Files.Get(fileId).DownloadAsync(stream);
+        if (progress.Status != Google.Apis.Download.DownloadStatus.Completed)
+            throw new IOException("Не вдалося отримати файл з Google Drive.", progress.Exception);
+        return stream.ToArray();
+    });
+
+    public Task<IReadOnlyList<string>> ListFilesAsync() => GuardAsync<IReadOnlyList<string>>(async () =>
+    {
+        DriveService service = await GetServiceAsync();
+        string folderId = await GetFolderIdAsync(service);
+
+        var names = new List<string>();
+        string? pageToken = null;
+        do
+        {
+            var request = service.Files.List();
+            request.Q = $"'{folderId}' in parents and trashed = false and mimeType != '{FolderMimeType}'";
+            request.Fields = "nextPageToken, files(id, name)";
+            request.Spaces = "drive";
+            request.PageToken = pageToken;
+            var result = await request.ExecuteAsync();
+            names.AddRange(result.Files.Select(f => f.Name));
+            pageToken = result.NextPageToken;
+        } while (pageToken is not null);
+
+        return names.Order(StringComparer.CurrentCultureIgnoreCase).ToList();
+    });
+
     // Signs in via the browser once; the token is cached in _tokenDirectory
-    public async Task AuthorizeAsync()
+    private async Task AuthorizeAsync()
     {
         if (_driveService is not null)
             return;
@@ -83,65 +162,6 @@ public sealed class GoogleDriveStorage : IFileStorage
             HttpClientInitializer = credential,
             ApplicationName = "SpreadsheetApp",
         });
-    }
-
-    // Creates the file or overwrites one with the same name
-    public async Task SaveAsync(string fileName, byte[] data)
-    {
-        DriveService service = await GetServiceAsync();
-        string folderId = await GetFolderIdAsync(service);
-        string? existingId = await FindFileIdAsync(service, folderId, fileName);
-
-        using var stream = new MemoryStream(data);
-        IUploadProgress progress;
-        if (existingId is null)
-        {
-            var metadata = new DriveFile { Name = fileName, Parents = new[] { folderId }, MimeType = FileMimeType };
-            progress = await service.Files.Create(metadata, stream, FileMimeType).UploadAsync();
-        }
-        else
-        {
-            progress = await service.Files.Update(new DriveFile(), existingId, stream, FileMimeType).UploadAsync();
-        }
-
-        if (progress.Status != UploadStatus.Completed)
-            throw new IOException("Не вдалося завантажити файл на Google Drive.", progress.Exception);
-    }
-
-    public async Task<byte[]> LoadAsync(string fileName)
-    {
-        DriveService service = await GetServiceAsync();
-        string folderId = await GetFolderIdAsync(service);
-        string fileId = await FindFileIdAsync(service, folderId, fileName)
-            ?? throw new FileNotFoundException($"Файл «{fileName}» не знайдено на Google Drive.");
-
-        using var stream = new MemoryStream();
-        var progress = await service.Files.Get(fileId).DownloadAsync(stream);
-        if (progress.Status != Google.Apis.Download.DownloadStatus.Completed)
-            throw new IOException("Не вдалося отримати файл з Google Drive.", progress.Exception);
-        return stream.ToArray();
-    }
-
-    public async Task<IReadOnlyList<string>> ListFilesAsync()
-    {
-        DriveService service = await GetServiceAsync();
-        string folderId = await GetFolderIdAsync(service);
-
-        var names = new List<string>();
-        string? pageToken = null;
-        do
-        {
-            var request = service.Files.List();
-            request.Q = $"'{folderId}' in parents and trashed = false and mimeType != '{FolderMimeType}'";
-            request.Fields = "nextPageToken, files(id, name)";
-            request.Spaces = "drive";
-            request.PageToken = pageToken;
-            var result = await request.ExecuteAsync();
-            names.AddRange(result.Files.Select(f => f.Name));
-            pageToken = result.NextPageToken;
-        } while (pageToken is not null);
-
-        return names.Order(StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
     private async Task<DriveService> GetServiceAsync()
@@ -181,4 +201,24 @@ public sealed class GoogleDriveStorage : IFileStorage
 
     // Escapes quotes for Drive search queries
     private static string Escape(string value) => value.Replace("\\", "\\\\").Replace("'", "\\'");
+
+    // Converts Google and network errors into plain IOExceptions with readable messages
+    private static async Task GuardAsync(Func<Task> action) =>
+        await GuardAsync(async () => { await action(); return true; });
+
+    private static async Task<T> GuardAsync<T>(Func<Task<T>> action)
+    {
+        try
+        {
+            return await action();
+        }
+        catch (GoogleApiException ex)
+        {
+            throw new IOException($"Помилка Google Drive: {ex.Error?.Message ?? ex.Message}", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new IOException("Немає з'єднання з інтернетом або сервер Google недоступний.", ex);
+        }
+    }
 }
